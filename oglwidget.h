@@ -23,12 +23,17 @@ public slots:
     void stepAnimation();
     void lineRead(QString key, float x, float y, float z);
 
+
 protected:
     void initializeGL();
     void resizeGL(int w, int h);
     void paintGL();
 
     void drawObject(QVector<Vertex> vertices, QVector<Triangle> shape);
+
+    void connectivity(QVector<Vertex> points);
+    void findNeighbors(QVector<Triangle> tris);
+    void subdivision(QVector<Triangle> tris, QVector<Vertex> points);
 
 protected:
     QTimer* animtimer; // Timer needed to step animation every x msec

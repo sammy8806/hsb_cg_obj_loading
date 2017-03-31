@@ -5,10 +5,14 @@
 class Triangle
 {
 public:
-    Triangle();
-    Triangle(float x, float y, float z);
+    float vertexIndex[3];//vertex indices
+    int neighbours[3];//adjacent triangles
+    int edgeVertices [3];//edge vertex ind
 
-    int vIndex[3];
+    Triangle();
+    Triangle( float[3]);
+    Triangle( float i, float j, float k);//int - vertex index
+    void Print();
 };
 
 #endif // TRIANGLE_H

@@ -1,6 +1,8 @@
 #include "oglwidget.h"
 #include <math.h>
 #include <iostream>
+#include <algorithm> // for std::find
+#include <iterator> // for std::begin, std::end
 
 #define PI 3.14159265358979323846
 using namespace std;
@@ -126,7 +128,7 @@ void OGLWidget::lineRead(QString key, float x, float y, float z)
     if(key == "v") {
         this->vertices.push_back(Vertex(x, y, z));
     } else if(key == "f") {
-        this->triangles.push_back(Triangle(x, y, z));
+        this->triangles.push_back(Triangle(--x, --y, --z));
     }
 }
 
@@ -172,13 +174,13 @@ void OGLWidget::drawObject(QVector<Vertex> vertices, QVector<Triangle> shape)
     for(int i=0; i<shape.length(); i++) {
         this->cross(
                     normal,
-                    vertices.at(shape[i].vIndex[0]).coordinates,
-                    vertices.at(shape[i].vIndex[1]).coordinates
+                    vertices.at(shape[i].vertexIndex[0]).vertexCoord,
+                    vertices.at(shape[i].vertexIndex[1]).vertexCoord
         );
         glNormal3fv(normal);
 
         for(int j=0; j<3; j++) {
-            glVertex3fv(vertices.at(shape[i].vIndex[j]).coordinates);
+            glVertex3fv(vertices.at(shape[i].vertexIndex[j]).vertexCoord);
         }
     }
 
@@ -191,6 +193,117 @@ void OGLWidget::cross(float c[3], const float a[], const float b[])
     c[1] = a[2]*b[0]-a[0]*b[2];
     c[2] = a[0]*b[1]-a[1]*b[0];
 }
+//valence
+void OGLWidget::connectivity(QVector<Vertex> points){
+    for(int i = 0; i<points.size(); i++){
+        points[i].n = 0; // := means set?
+    }
+}
+
+//fill it[] of Triangles. In the end all it-s of all triangles should be filled
+void OGLWidget::findNeighbors(QVector<Triangle> tris){
+    for(int i = 0; i<tris.size(); i++){
+        int a = tris[i].vertexIndex[0];
+        int b = tris[i].vertexIndex[1];
+        int c = tris[i].vertexIndex[2];
+        for(int j = 0; j<tris.size(); j++){
+            if(i != j){
+                bool containsa = std::find(begin(tris[j].vertexIndex), end(tris[j].vertexIndex), a)!= end(tris[j].vertexIndex);
+                bool containsb = std::find(begin(tris[j].vertexIndex), end(tris[j].vertexIndex), b)!= end(tris[j].vertexIndex);
+                bool containsc = std::find(begin(tris[j].vertexIndex), end(tris[j].vertexIndex), c)!= end(tris[j].vertexIndex);
+                if(containsb && containsc){ //b and c
+                    tris[i].neighbours[0] =j;//j - index of triangle in QVector
+                }
+                if(containsc && containsa){//a and c
+                    tris[i].neighbours[1] =j;
+                }
+                if(containsa && containsb){//a and b
+                    tris[i].neighbours[2] =j;
+                }
+            }//end ifs
+            //valence of points - n of a,b,c - increase? cause at this points all 3 neighbours are found
+       }
+   }
+}
+//perform subdivision algo
+void OGLWidget::subdivision(QVector<Triangle> tris, QVector<Vertex> points){
+    //for t0
+    for(int i = 0; i<tris.size(); i++){
+        if(i<tris[i].neighbours[0]){//neighbours[x] value also a tris index
+            //position in the neighbours[] tells what vertecies are SAME as those from tris[i]
+            //meaning - neighbours[0] has points tris[i].vertexIndex[1] and [2](all but [0], his position)
+            //Still they can be on other vertexIndex positions in neighbour triangle itself
+            //formula is e0 = (a + 3*b + 3*c + d)/8; and we need to find d - the neighbours[0] different vertex
+
+            Triangle n = tris[tris[i].neighbours[0]];
+            int dpos; //position of d in points
+            int p1 = tris[i].vertexIndex[1];
+            int p2 = tris[i].vertexIndex[2];//1 and 2 - the 2 eq points in both tris
+            for(int j = 0; j<3; j++){
+                if(n.vertexIndex[j] !=p1 &&n.vertexIndex[j] !=p2){
+                    dpos = n.vertexIndex[j];
+                }
+            }
+
+            Vertex a = points[tris[i].vertexIndex[0]];
+            Vertex b = points[tris[i].vertexIndex[1]];
+            Vertex c = points[tris[i].vertexIndex[2]];
+            Vertex d = points[n.vertexIndex[dpos]];
+            Vertex e0 = (a + 3*b+3*c+d)/8;
+            points.push_back(e0);//add to points vector
+            tris[i].edgeVertices[0]=points.size() - 1;//e0 was just pushed, so last index will do
+        }else{
+            tris[i].edgeVertices[0]= tris[tris[i].neighbours[0]].edgeVertices[0];
+        }
+    }
+    //for t1
+    for(int i = 0; i<tris.size(); i++){
+        if(i<tris[i].neighbours[1]){
+            Triangle n = tris[tris[i].neighbours[1]];
+            int dpos;
+            int p1 = tris[i].vertexIndex[0];
+            int p2 = tris[i].vertexIndex[2];
+            for(int j = 0; j<3; j++){
+                if(n.vertexIndex[j] !=p1 &&n.vertexIndex[j] !=p2){
+                    dpos = n.vertexIndex[j];
+                }
+            }
+            Vertex a = points[tris[i].vertexIndex[0]];
+            Vertex b = points[tris[i].vertexIndex[1]];
+            Vertex c = points[tris[i].vertexIndex[2]];
+            Vertex d = points[n.vertexIndex[dpos]];
+            Vertex e1 = (a + 3*b+3*c+d)/8;
+            points.push_back(e1);
+            tris[i].edgeVertices[1]=points.size() - 1;
+        }else{
+            tris[i].edgeVertices[1]= tris[tris[i].neighbours[1]].edgeVertices[1];
+        }
+    }
+    //for t2
+    for(int i = 0; i<tris.size(); i++){
+        if(i<tris[i].neighbours[2]){
+            Triangle n = tris[tris[i].neighbours[2]];
+            int dpos;
+            int p1 = tris[i].vertexIndex[0];
+            int p2 = tris[i].vertexIndex[1];
+            for(int j = 0; j<3; j++){
+                if(n.vertexIndex[j] !=p1 &&n.vertexIndex[j] !=p2){
+                    dpos = n.vertexIndex[j];
+                }
+            }
+            Vertex a = points[tris[i].vertexIndex[0]];
+            Vertex b = points[tris[i].vertexIndex[1]];
+            Vertex c = points[tris[i].vertexIndex[2]];
+            Vertex d = points[n.vertexIndex[dpos]];
+            Vertex e2 = (a + 3*b+3*c+d)/8;
+            points.push_back(e2);
+            tris[i].edgeVertices[2]=points.size() - 1;
+        }else{
+            tris[i].edgeVertices[2]= tris[tris[i].neighbours[2]].edgeVertices[2];
+        }
+    }
+}
+
 
 void OGLWidget::resizeGL(int w, int h) // called when window size is changed
 {

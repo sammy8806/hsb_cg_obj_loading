@@ -1,0 +1,3 @@
+bin bis vertex mask gekommen - weiss noch nicht wie man damit umgeht.
+Connectivity Algorithm - die nachbarn werden gefunden
+Subdivision Algorithm (Edge Mask) - muss an sich richtig sein, kriege aber fehler bei den operatoren - error: undefined reference to `operator+(Vertex, Vertex)' usw

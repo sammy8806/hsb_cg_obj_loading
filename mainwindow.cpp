@@ -8,6 +8,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
 
     connect(this, &MainWindow::lineRead, ui->glwidget, &OGLWidget::lineRead);
+
 }
 
 MainWindow::~MainWindow()

@@ -1,3 +1,6 @@
-bin bis vertex mask gekommen - weiss noch nicht wie man damit umgeht.
-Connectivity Algorithm - die nachbarn werden gefunden
-Subdivision Algorithm (Edge Mask) - muss an sich richtig sein, kriege aber fehler bei den operatoren - error: undefined reference to `operator+(Vertex, Vertex)' usw
+die funktionen mussen stimmen. Konnte nicht zu ende testen weil -
+fehler mit connectivity algo. Am ende der connectivity() sind die werte gut
+aber wenn ich diese spater ausgebe - nicht mehr. Die debug-zeilen geben alles aus.
+Schaut euch das an, kp was da los ist, Martin konnte auch nicht helfen
+
+kadabra100500@gmail.com - falls irgendwas

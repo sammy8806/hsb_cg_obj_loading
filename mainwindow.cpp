@@ -52,4 +52,5 @@ void MainWindow::on_pushButton_clicked()
     qDebug() << "selecting " + fileName;
 
     this->readData(fileName);
+
 }

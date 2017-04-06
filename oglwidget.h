@@ -29,19 +29,21 @@ protected:
     void resizeGL(int w, int h);
     void paintGL();
 
-    void drawObject(QVector<Vertex> vertices, QVector<Triangle> shape);
+    void drawObject(QVector<Vertex> points, QVector<Triangle> shape);
 
-    void connectivity(QVector<Vertex> points);
-    void findNeighbors(QVector<Triangle> tris);
-    void subdivision(QVector<Triangle> tris, QVector<Vertex> points);
+    void connectivity(QVector<Triangle> tris, QVector<Vertex> points);
+    void subdivisionEdge(QVector<Triangle> tris, QVector<Vertex> points);
+    float calculateBeta(int n);
+    void subdivisionVertex(QVector<Triangle> tris, QVector<Vertex>points);
 
 protected:
     QTimer* animtimer; // Timer needed to step animation every x msec
     int animstep;      // Current animation step (used to rotate triangle
 
 private:
-    QVector<Triangle> triangles;
-    QVector<Vertex> vertices;
+    QVector<Triangle> tris;
+    QVector<Vertex> points;
+   // QVector<Triangle> trisSubdivided;
 
     void cross(float c[3], float const a[3], float const b[3]);
 };

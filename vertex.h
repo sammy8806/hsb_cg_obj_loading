@@ -5,13 +5,15 @@
 class Vertex
 {
 public:
-    int n;
-    float vertexCoord[3];
+    int valence;
+    float coordinates[3];
 
     Vertex();
     Vertex( float p1[3]);
     Vertex(float x,float y, float z);
     void Print(); // print coordinates on screen
+    void operator*=(float a);
+    void operator +=(Vertex b);
 };
 
 Vertex operator+(Vertex a, Vertex b);

@@ -9,7 +9,6 @@ using namespace std;
 
 static double alpha = 45.0; // rotation angle
 
-
 // initialize Open GL lighting and projection matrix
 void InitLightingAndProjection() // to be executed once before drawing
 {
@@ -126,9 +125,9 @@ void OGLWidget::lineRead(QString key, float x, float y, float z)
 {
     qDebug() << "OGL::lineRead: " << key;
     if(key == "v") {
-        this->vertices.push_back(Vertex(x, y, z));
+        this->points.push_back(Vertex(x, y, z));
     } else if(key == "f") {
-        this->triangles.push_back(Triangle(--x, --y, --z));
+        this->tris.push_back(Triangle(--x, --y, --z));
     }
 }
 
@@ -160,27 +159,37 @@ void OGLWidget::paintGL() // draw everything, to be called repeatedly
 
     // draw a cylinder with default resolution
     // DrawCylinder();
-    drawObject(this->vertices, this->triangles);
+    drawObject(this->points, this->tris);
 
     // make it appear (before this, it's hidden in the rear buffer)
     glFlush();
 }
 
-void OGLWidget::drawObject(QVector<Vertex> vertices, QVector<Triangle> shape)
-{
-    glBegin(GL_TRIANGLES);
+void OGLWidget::drawObject(QVector<Vertex> points, QVector<Triangle> tris)
+{    
+
+    connectivity(tris, points);
+    //ERROR HERE - at the end of connectivity the values are good, but in the next for-loop they go crazy
+    for(int j =0; j <tris.size(); j++){
+        qDebug() << "CHECK ERROR HERE tris ind: " << j << "neighbours: "<< tris[j].neighbours[0] << tris[j].neighbours[1] << tris[j].neighbours[2];
+    }
+    //subdivisionEdge(shape, vertices);
+   // subdivisionVertex(shape, vertices);
+
+    glBegin(GL_LINE_STRIP);
+    glColor3f(1,1,0);
     float normal[3];
 
-    for(int i=0; i<shape.length(); i++) {
+    for(int i=0; i<tris.length(); i++) {
         this->cross(
                     normal,
-                    vertices.at(shape[i].vertexIndex[0]).vertexCoord,
-                    vertices.at(shape[i].vertexIndex[1]).vertexCoord
+                    points.at(tris[i].vertexIndex[0]).coordinates,
+                    points.at(tris[i].vertexIndex[1]).coordinates
         );
         glNormal3fv(normal);
 
         for(int j=0; j<3; j++) {
-            glVertex3fv(vertices.at(shape[i].vertexIndex[j]).vertexCoord);
+            glVertex3fv(points.at(tris[i].vertexIndex[j]).coordinates);
         }
     }
 
@@ -193,24 +202,24 @@ void OGLWidget::cross(float c[3], const float a[], const float b[])
     c[1] = a[2]*b[0]-a[0]*b[2];
     c[2] = a[0]*b[1]-a[1]*b[0];
 }
-//valence
-void OGLWidget::connectivity(QVector<Vertex> points){
-    for(int i = 0; i<points.size(); i++){
-        points[i].n = 0; // := means set?
-    }
-}
 
-//fill it[] of Triangles. In the end all it-s of all triangles should be filled
-void OGLWidget::findNeighbors(QVector<Triangle> tris){
+//perform connectivity algo
+void OGLWidget::connectivity(QVector<Triangle> tris, QVector<Vertex> points){
+    for(int j = 0; j<points.size(); j++){//set all valences to 0
+        points[j].valence = 0;
+    }
+
     for(int i = 0; i<tris.size(); i++){
         int a = tris[i].vertexIndex[0];
         int b = tris[i].vertexIndex[1];
         int c = tris[i].vertexIndex[2];
+
         for(int j = 0; j<tris.size(); j++){
-            if(i != j){
+            if(i != j){//not the same triangle
                 bool containsa = std::find(begin(tris[j].vertexIndex), end(tris[j].vertexIndex), a)!= end(tris[j].vertexIndex);
                 bool containsb = std::find(begin(tris[j].vertexIndex), end(tris[j].vertexIndex), b)!= end(tris[j].vertexIndex);
                 bool containsc = std::find(begin(tris[j].vertexIndex), end(tris[j].vertexIndex), c)!= end(tris[j].vertexIndex);
+
                 if(containsb && containsc){ //b and c
                     tris[i].neighbours[0] =j;//j - index of triangle in QVector
                 }
@@ -221,20 +230,23 @@ void OGLWidget::findNeighbors(QVector<Triangle> tris){
                     tris[i].neighbours[2] =j;
                 }
             }//end ifs
-            //valence of points - n of a,b,c - increase? cause at this points all 3 neighbours are found
+            //valence of points - n of a,b,c - increase here? cause at this points all 3 neighbours are found
+            points[a].valence++;
+            points[b].valence++;
+            points[c].valence++;
        }
    }
+    //test connectivity result
+     for(int i = 0; i<tris.size(); i++){
+         qDebug() << "tris ind: " << i << "neighbours: "<< tris[i].neighbours[0] << tris[i].neighbours[1] << tris[i].neighbours[2];
+     }
 }
-//perform subdivision algo
-void OGLWidget::subdivision(QVector<Triangle> tris, QVector<Vertex> points){
+
+//perform subdivision algo - edge mask
+void OGLWidget::subdivisionEdge(QVector<Triangle> tris, QVector<Vertex> points){
     //for t0
     for(int i = 0; i<tris.size(); i++){
-        if(i<tris[i].neighbours[0]){//neighbours[x] value also a tris index
-            //position in the neighbours[] tells what vertecies are SAME as those from tris[i]
-            //meaning - neighbours[0] has points tris[i].vertexIndex[1] and [2](all but [0], his position)
-            //Still they can be on other vertexIndex positions in neighbour triangle itself
-            //formula is e0 = (a + 3*b + 3*c + d)/8; and we need to find d - the neighbours[0] different vertex
-
+        if(i<tris[i].neighbours[0]){
             Triangle n = tris[tris[i].neighbours[0]];
             int dpos; //position of d in points
             int p1 = tris[i].vertexIndex[1];
@@ -251,9 +263,9 @@ void OGLWidget::subdivision(QVector<Triangle> tris, QVector<Vertex> points){
             Vertex d = points[n.vertexIndex[dpos]];
             Vertex e0 = (a + 3*b+3*c+d)/8;
             points.push_back(e0);//add to points vector
-            tris[i].edgeVertices[0]=points.size() - 1;//e0 was just pushed, so last index will do
+            tris[i].midIndex[0]=points.size() - 1;//e0 was just pushed, so last index will do
         }else{
-            tris[i].edgeVertices[0]= tris[tris[i].neighbours[0]].edgeVertices[0];
+            tris[i].midIndex[0]= tris[tris[i].neighbours[0]].midIndex[0];
         }
     }
     //for t1
@@ -274,9 +286,9 @@ void OGLWidget::subdivision(QVector<Triangle> tris, QVector<Vertex> points){
             Vertex d = points[n.vertexIndex[dpos]];
             Vertex e1 = (a + 3*b+3*c+d)/8;
             points.push_back(e1);
-            tris[i].edgeVertices[1]=points.size() - 1;
+            tris[i].midIndex[1]=points.size() - 1;
         }else{
-            tris[i].edgeVertices[1]= tris[tris[i].neighbours[1]].edgeVertices[1];
+            tris[i].midIndex[1]= tris[tris[i].neighbours[1]].midIndex[1];
         }
     }
     //for t2
@@ -297,13 +309,55 @@ void OGLWidget::subdivision(QVector<Triangle> tris, QVector<Vertex> points){
             Vertex d = points[n.vertexIndex[dpos]];
             Vertex e2 = (a + 3*b+3*c+d)/8;
             points.push_back(e2);
-            tris[i].edgeVertices[2]=points.size() - 1;
+            tris[i].midIndex[2]=points.size() - 1;
         }else{
-            tris[i].edgeVertices[2]= tris[tris[i].neighbours[2]].edgeVertices[2];
+            tris[i].midIndex[2]= tris[tris[i].neighbours[2]].midIndex[2];
         }
     }
 }
 
+float OGLWidget::calculateBeta(int n){
+    float alpha = 3/8 + (3/8 + 1/4 *cos(2* PI /n));
+    float beta = 8/5*alpha - 3/5;
+    return beta;
+}
+
+//perform subdivision algo - vertex mask
+void OGLWidget::subdivisionVertex(QVector<Triangle> tris, QVector<Vertex>points){
+    //Vector<Triangle>trisSubdivided; - in oglwidget.h
+    for(int i =0; i <points.size(); i++){
+        points[i].valence *= calculateBeta(points[i].valence);
+    }
+
+    for(int j =0; j <tris.size(); j++){
+        Vertex a = points[tris[j].vertexIndex[0]];
+        Vertex b = points[tris[j].vertexIndex[1]];
+        Vertex c = points[tris[j].vertexIndex[2]];
+        //a
+        points[tris[j].vertexIndex[0]] += ( 1.0-calculateBeta(a.valence) / (a.valence) ) * ( points[tris[j].midIndex[1]] + points[tris[j].midIndex[2]] ) /2;
+        //b
+        points[tris[j].vertexIndex[1]] += ( 1.0-calculateBeta(b.valence) / (b.valence) ) * ( points[tris[j].midIndex[0]] + points[tris[j].midIndex[2]] ) /2;
+        //c
+        points[tris[j].vertexIndex[2]] += ( 1.0-calculateBeta(c.valence) / (c.valence) ) * ( points[tris[j].midIndex[0]] + points[tris[j].midIndex[1]] ) /2;
+    }
+
+    //replace tris
+    //since every step adds 3 tris, save the initial size - or it will be endless
+    int size = tris.size();
+    for(int k =0; k <size; k++){
+        //replace old
+        Triangle tNew (tris[k].midIndex[1], tris[k].midIndex[0], tris[k].vertexIndex[2]);
+        tris[k] = tNew;
+        //add 3 new
+        Triangle t1 (tris[k].midIndex[1], tris[k].midIndex[2], tris[k].midIndex[1]);
+        Triangle t2 (tris[k].vertexIndex[0], tris[k].midIndex[2], tris[k].midIndex[1]);
+        Triangle t3 (tris[k].midIndex[2], tris[k].vertexIndex[1], tris[k].midIndex[0]);
+        tris.push_back(t1);
+        tris.push_back(t2);
+        tris.push_back(t3);
+    }
+
+}
 
 void OGLWidget::resizeGL(int w, int h) // called when window size is changed
 {

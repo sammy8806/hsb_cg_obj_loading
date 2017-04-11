@@ -204,9 +204,13 @@ void OGLWidget::cross(float c[3], const float a[], const float b[])
 }
 
 //perform connectivity algo
-void OGLWidget::connectivity(QVector<Triangle> tris, QVector<Vertex> points){
-    for(int j = 0; j<points.size(); j++){//set all valences to 0
-        points[j].valence = 0;
+void OGLWidget::connectivity(QVector<Triangle> &tris, QVector<Vertex> &points){
+    /*for(int j = 0; j<points->size(); j++){//set all valences to 0
+        points->at(j).valence = 0;
+    }*/
+
+    for(auto point : points) {
+        point.valence = 0;
     }
 
     for(int i = 0; i<tris.size(); i++){
@@ -243,7 +247,7 @@ void OGLWidget::connectivity(QVector<Triangle> tris, QVector<Vertex> points){
 }
 
 //perform subdivision algo - edge mask
-void OGLWidget::subdivisionEdge(QVector<Triangle> tris, QVector<Vertex> points){
+void OGLWidget::subdivisionEdge(QVector<Triangle> &tris, QVector<Vertex> &points){
     //for t0
     for(int i = 0; i<tris.size(); i++){
         if(i<tris[i].neighbours[0]){
@@ -323,7 +327,7 @@ float OGLWidget::calculateBeta(int n){
 }
 
 //perform subdivision algo - vertex mask
-void OGLWidget::subdivisionVertex(QVector<Triangle> tris, QVector<Vertex>points){
+void OGLWidget::subdivisionVertex(QVector<Triangle> &tris, QVector<Vertex> &points){
     //Vector<Triangle>trisSubdivided; - in oglwidget.h
     for(int i =0; i <points.size(); i++){
         points[i].valence *= calculateBeta(points[i].valence);

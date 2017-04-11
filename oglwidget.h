@@ -31,10 +31,10 @@ protected:
 
     void drawObject(QVector<Vertex> points, QVector<Triangle> shape);
 
-    void connectivity(QVector<Triangle> tris, QVector<Vertex> points);
-    void subdivisionEdge(QVector<Triangle> tris, QVector<Vertex> points);
+    void connectivity(QVector<Triangle> &tris, QVector<Vertex> &points);
+    void subdivisionEdge(QVector<Triangle> &tris, QVector<Vertex> &points);
     float calculateBeta(int n);
-    void subdivisionVertex(QVector<Triangle> tris, QVector<Vertex>points);
+    void subdivisionVertex(QVector<Triangle> &tris, QVector<Vertex> &points);
 
 protected:
     QTimer* animtimer; // Timer needed to step animation every x msec

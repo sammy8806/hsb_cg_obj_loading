@@ -41,7 +41,7 @@ void InitLightingAndProjection() // to be executed once before drawing
 
     glMatrixMode( GL_PROJECTION); // define camera projection
     glLoadIdentity(); // reset matrix to identity (otherwise existing matrix will be multiplied with)
-    glOrtho( -30, 30, -50, 50, -80, 80); // orthogonal projection (xmin xmax ymin ymax zmin zmax)
+    glOrtho( -50, 50, -50, 50, -80, 80); // orthogonal projection (xmin xmax ymin ymax zmin zmax)
     //glFrustum( -10, 10, -8, 8, 2, 20); // perspective projektion
 }
 
@@ -109,6 +109,17 @@ OGLWidget::OGLWidget(QWidget *parent) // constructor
     connect(animtimer, SIGNAL(timeout()), this, SLOT(stepAnimation()));
 
     animstep = 0;
+
+    for(Triangle tri : this->tris) {
+        for(int i=0; i < 3; i++)
+            tri.midIndex[i] = 0;
+
+        for(int i=0; i < 3; i++)
+            tri.neighbours[i] = 0;
+
+        for(int i=0; i < 3; i++)
+            tri.vertexIndex[i] = 0.0f;
+    }
 }
 
 OGLWidget::~OGLWidget() // destructor
@@ -167,14 +178,18 @@ void OGLWidget::paintGL() // draw everything, to be called repeatedly
 
 void OGLWidget::drawObject(QVector<Vertex> points, QVector<Triangle> tris)
 {    
-
     connectivity(tris, points);
-    //ERROR HERE - at the end of connectivity the values are good, but in the next for-loop they go crazy
+
     for(int j =0; j <tris.size(); j++){
-        qDebug() << "CHECK ERROR HERE tris ind: " << j << "neighbours: "<< tris[j].neighbours[0] << tris[j].neighbours[1] << tris[j].neighbours[2];
+        qDebug() << "tris ind: " << j << "neighbours: "<< tris[j].neighbours[0] << tris[j].neighbours[1] << tris[j].neighbours[2];
     }
-    //subdivisionEdge(shape, vertices);
-   // subdivisionVertex(shape, vertices);
+
+    if(tris.size() > 0) {
+
+    subdivisionEdge(tris, points);
+    subdivisionVertex(tris, points);
+
+    }
 
     glBegin(GL_LINE_STRIP);
     glColor3f(1,1,0);
@@ -249,14 +264,16 @@ void OGLWidget::connectivity(QVector<Triangle> &tris, QVector<Vertex> &points){
 //perform subdivision algo - edge mask
 void OGLWidget::subdivisionEdge(QVector<Triangle> &tris, QVector<Vertex> &points){
     //for t0
-    for(int i = 0; i<tris.size(); i++){
-        if(i<tris[i].neighbours[0]){
+    for(int i = 0; i < tris.size(); i++){
+        if(i < tris[i].neighbours[0]){
             Triangle n = tris[tris[i].neighbours[0]];
             int dpos; //position of d in points
+
             int p1 = tris[i].vertexIndex[1];
             int p2 = tris[i].vertexIndex[2];//1 and 2 - the 2 eq points in both tris
+
             for(int j = 0; j<3; j++){
-                if(n.vertexIndex[j] !=p1 &&n.vertexIndex[j] !=p2){
+                if(n.vertexIndex[j] != p1 && n.vertexIndex[j] != p2){
                     dpos = n.vertexIndex[j];
                 }
             }
@@ -264,14 +281,24 @@ void OGLWidget::subdivisionEdge(QVector<Triangle> &tris, QVector<Vertex> &points
             Vertex a = points[tris[i].vertexIndex[0]];
             Vertex b = points[tris[i].vertexIndex[1]];
             Vertex c = points[tris[i].vertexIndex[2]];
-            Vertex d = points[n.vertexIndex[dpos]];
+
+            Vertex d = points[dpos];
+
+            qDebug() << "D: " << d.coordinates[0] << " " << d.coordinates[1] << " " << d.coordinates[2];
+
             Vertex e0 = (a + 3*b+3*c+d)/8;
-            points.push_back(e0);//add to points vector
-            tris[i].midIndex[0]=points.size() - 1;//e0 was just pushed, so last index will do
-        }else{
-            tris[i].midIndex[0]= tris[tris[i].neighbours[0]].midIndex[0];
+
+            qDebug() << "e0: " << e0.coordinates[0] << " " << e0.coordinates[1] << " " << e0.coordinates[2];
+
+            points.push_back(e0); //add to points vector
+
+            tris[i].midIndex[0] = points.size() - 1; //e0 was just pushed, so last index will do
+            qDebug() << "New Index: " << points.size();
+        } else {
+            tris[i].midIndex[0] = tris[tris[i].neighbours[0]].midIndex[0];
         }
     }
+
     //for t1
     for(int i = 0; i<tris.size(); i++){
         if(i<tris[i].neighbours[1]){
@@ -287,10 +314,18 @@ void OGLWidget::subdivisionEdge(QVector<Triangle> &tris, QVector<Vertex> &points
             Vertex a = points[tris[i].vertexIndex[0]];
             Vertex b = points[tris[i].vertexIndex[1]];
             Vertex c = points[tris[i].vertexIndex[2]];
-            Vertex d = points[n.vertexIndex[dpos]];
-            Vertex e1 = (a + 3*b+3*c+d)/8;
-            points.push_back(e1);
+            Vertex d = points[dpos];
+
+            qDebug() << "D: " << d.coordinates[0] << " " << d.coordinates[1] << " " << d.coordinates[2];
+
+            Vertex e0 = (a + 3*b+3*c+d)/8;
+
+            qDebug() << "e0: " << e0.coordinates[0] << " " << e0.coordinates[1] << " " << e0.coordinates[2];
+
+            points.push_back(e0); //add to points vector
+
             tris[i].midIndex[1]=points.size() - 1;
+            qDebug() << "New Index: " << points.size();
         }else{
             tris[i].midIndex[1]= tris[tris[i].neighbours[1]].midIndex[1];
         }
@@ -310,10 +345,18 @@ void OGLWidget::subdivisionEdge(QVector<Triangle> &tris, QVector<Vertex> &points
             Vertex a = points[tris[i].vertexIndex[0]];
             Vertex b = points[tris[i].vertexIndex[1]];
             Vertex c = points[tris[i].vertexIndex[2]];
-            Vertex d = points[n.vertexIndex[dpos]];
-            Vertex e2 = (a + 3*b+3*c+d)/8;
-            points.push_back(e2);
+            Vertex d = points[dpos];
+
+            qDebug() << "D: " << d.coordinates[0] << " " << d.coordinates[1] << " " << d.coordinates[2];
+
+            Vertex e0 = (a + 3*b+3*c+d)/8;
+
+            qDebug() << "e0: " << e0.coordinates[0] << " " << e0.coordinates[1] << " " << e0.coordinates[2];
+
+            points.push_back(e0); //add to points vector
+
             tris[i].midIndex[2]=points.size() - 1;
+            qDebug() << "New Index: " << points.size();
         }else{
             tris[i].midIndex[2]= tris[tris[i].neighbours[2]].midIndex[2];
         }
@@ -351,14 +394,17 @@ void OGLWidget::subdivisionVertex(QVector<Triangle> &tris, QVector<Vertex> &poin
     for(int k =0; k <size; k++){
         //replace old
         Triangle tNew (tris[k].midIndex[1], tris[k].midIndex[0], tris[k].vertexIndex[2]);
-        tris[k] = tNew;
+        qDebug() << "New Tri: " << k << " " << tNew.vertexIndex[0] << " " << tNew.vertexIndex[1] << " " << tNew.vertexIndex[2];
+
         //add 3 new
-        Triangle t1 (tris[k].midIndex[1], tris[k].midIndex[2], tris[k].midIndex[1]);
+        Triangle t1 (tris[k].midIndex[1], tris[k].midIndex[2], tris[k].midIndex[0]);
         Triangle t2 (tris[k].vertexIndex[0], tris[k].midIndex[2], tris[k].midIndex[1]);
         Triangle t3 (tris[k].midIndex[2], tris[k].vertexIndex[1], tris[k].midIndex[0]);
         tris.push_back(t1);
         tris.push_back(t2);
         tris.push_back(t3);
+
+        tris[k] = tNew;
     }
 
 }

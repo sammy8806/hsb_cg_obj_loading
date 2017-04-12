@@ -22,6 +22,7 @@ public:
 public slots:
     void stepAnimation();
     void lineRead(QString key, float x, float y, float z);
+    void readFinished();
 
 
 protected:
@@ -29,7 +30,7 @@ protected:
     void resizeGL(int w, int h);
     void paintGL();
 
-    void drawObject(QVector<Vertex> points, QVector<Triangle> shape);
+    void drawObject(QVector<Vertex> &points, QVector<Triangle> &shape);
 
     void connectivity(QVector<Triangle> &tris, QVector<Vertex> &points);
     void subdivisionEdge(QVector<Triangle> &tris, QVector<Vertex> &points);

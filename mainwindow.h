@@ -32,6 +32,7 @@ private slots:
 
 signals:
     void lineRead(QString, float, float, float);
+    void readFinished();
 
 private:
     Ui::MainWindow *ui;

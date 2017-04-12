@@ -142,6 +142,37 @@ void OGLWidget::lineRead(QString key, float x, float y, float z)
     }
 }
 
+void OGLWidget::readFinished()
+{
+    qDebug() << "Reading Finished! .. Doint Subdivision stuff";
+
+    // QVector<Triangle> tris = this->tris;
+    // QVector<Vertex> points = this->points;
+
+    if(this->tris.size() > 0) {
+        for(int i=0; i<1; i++) {
+
+            connectivity(this->tris, this->points);
+
+
+            for(Triangle tri : this->tris) {
+                qDebug() << "Tri: " << tri.vertexIndex[0] << " " << tri.vertexIndex[1] << " " << tri.vertexIndex[2] << " ";
+            }
+
+            for(Vertex vertex : this->points) {
+                qDebug() << "Vertex: " << vertex.coordinates[0] << " "<< vertex.coordinates[1] << " "<< vertex.coordinates[2] << " #" << vertex.valence;
+            }
+
+            for(int j =0; j <this->tris.size(); j++){
+                qDebug() << "tris ind: " << j << "neighbours: "<< tris[j].neighbours[0] << tris[j].neighbours[1] << tris[j].neighbours[2];
+            }
+
+            subdivisionEdge(this->tris, this->points);
+            subdivisionVertex(this->tris, this->points);
+        }
+    }
+}
+
 void OGLWidget::initializeGL() // initializations to be called once
 {
     initializeOpenGLFunctions();
@@ -176,22 +207,11 @@ void OGLWidget::paintGL() // draw everything, to be called repeatedly
     glFlush();
 }
 
-void OGLWidget::drawObject(QVector<Vertex> points, QVector<Triangle> tris)
+void OGLWidget::drawObject(QVector<Vertex> &points, QVector<Triangle> &tris)
 {    
-    connectivity(tris, points);
+    // glBegin(GL_LINE_STRIP);
+    glBegin(GL_TRIANGLES);
 
-    for(int j =0; j <tris.size(); j++){
-        qDebug() << "tris ind: " << j << "neighbours: "<< tris[j].neighbours[0] << tris[j].neighbours[1] << tris[j].neighbours[2];
-    }
-
-    if(tris.size() > 0) {
-
-    subdivisionEdge(tris, points);
-    subdivisionVertex(tris, points);
-
-    }
-
-    glBegin(GL_LINE_STRIP);
     glColor3f(1,1,0);
     float normal[3];
 
@@ -233,22 +253,23 @@ void OGLWidget::connectivity(QVector<Triangle> &tris, QVector<Vertex> &points){
         int b = tris[i].vertexIndex[1];
         int c = tris[i].vertexIndex[2];
 
-        for(int j = 0; j<tris.size(); j++){
+        for(int j = 0; j < tris.size(); j++){
+
             if(i != j){//not the same triangle
-                bool containsa = std::find(begin(tris[j].vertexIndex), end(tris[j].vertexIndex), a)!= end(tris[j].vertexIndex);
-                bool containsb = std::find(begin(tris[j].vertexIndex), end(tris[j].vertexIndex), b)!= end(tris[j].vertexIndex);
-                bool containsc = std::find(begin(tris[j].vertexIndex), end(tris[j].vertexIndex), c)!= end(tris[j].vertexIndex);
+                bool containsa = std::find(begin(tris[j].vertexIndex), end(tris[j].vertexIndex), a) != end(tris[j].vertexIndex);
+                bool containsb = std::find(begin(tris[j].vertexIndex), end(tris[j].vertexIndex), b) != end(tris[j].vertexIndex);
+                bool containsc = std::find(begin(tris[j].vertexIndex), end(tris[j].vertexIndex), c) != end(tris[j].vertexIndex);
 
                 if(containsb && containsc){ //b and c
-                    tris[i].neighbours[0] =j;//j - index of triangle in QVector
+                    tris[i].neighbours[0] = j; //j - index of triangle in QVector
+                } else if(containsc && containsa){ //a and c
+                    tris[i].neighbours[1] = j;
+                } else if(containsa && containsb){ //a and b
+                    tris[i].neighbours[2] = j;
                 }
-                if(containsc && containsa){//a and c
-                    tris[i].neighbours[1] =j;
-                }
-                if(containsa && containsb){//a and b
-                    tris[i].neighbours[2] =j;
-                }
-            }//end ifs
+
+            } //end ifs
+
             //valence of points - n of a,b,c - increase here? cause at this points all 3 neighbours are found
             points[a].valence++;
             points[b].valence++;
@@ -265,6 +286,7 @@ void OGLWidget::connectivity(QVector<Triangle> &tris, QVector<Vertex> &points){
 void OGLWidget::subdivisionEdge(QVector<Triangle> &tris, QVector<Vertex> &points){
     //for t0
     for(int i = 0; i < tris.size(); i++){
+        // is it really connected ?!
         if(i < tris[i].neighbours[0]){
             Triangle n = tris[tris[i].neighbours[0]];
             int dpos; //position of d in points

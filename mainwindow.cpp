@@ -8,7 +8,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
 
     connect(this, &MainWindow::lineRead, ui->glwidget, &OGLWidget::lineRead);
-
+    connect(this, &MainWindow::readFinished, ui->glwidget, &OGLWidget::readFinished);
 }
 
 MainWindow::~MainWindow()
@@ -35,6 +35,8 @@ void MainWindow::readData(QString filename)
         in >> key >> x >> y >> z;
         emit lineRead(key, x, y, z);
     }
+
+    emit readFinished();
 
     objFile->close();
 }
